@@ -2,20 +2,44 @@
 % Please edit documentation in R/makeGrids.R
 \name{makeGrids}
 \alias{makeGrids}
-\title{Create grid cells (fishnet) from a given spatial data}
+\title{Generate Regular Grid (Fishnet) from a Spatial Object}
 \usage{
 makeGrids(spObject, cellSize, clip = FALSE)
 }
 \arguments{
-\item{spObject}{A spatial object in UTM projection.}
+\item{spObject}{A spatial object (sf, SpatVector, or Spatial*) in projected coordinates (e.g., UTM).}
 
-\item{cellSize}{Cell size for each subgrid in meters.}
+\item{cellSize}{Numeric. Grid cell size (width and height) in the same units as the spatial object's CRS (usually meters).}
 
-\item{clip}{Clip grids within the spObject (default FALSE or preserve the whole grids).}
+\item{clip}{Logical. If \code{TRUE}, only cells intersecting the spatial object are kept.
+If \code{FALSE}, the full rectangular grid covering the object's extent is returned. Default = \code{FALSE}.}
 }
 \value{
-A SpatialPolygoneDataframe of grid cells.
+An \code{sf} object representing the generated grid polygons with a column \code{Grid_id}
+containing unique IDs for each cell.
 }
 \description{
-A function to create fishnet from a given spatial object/extent.
+This function creates a regular grid (fishnet) of polygon cells over the
+extent of a given spatial object. Optionally, the grid can be clipped to
+match the boundary of the spatial object.
+}
+\details{
+This function is particularly useful for spatial analyses that require dividing
+a landscape into regular subunits, such as habitat suitability modeling,
+biodiversity surveys, or spatial summarization.
+}
+\examples{
+\dontrun{
+library(terra)
+library(sf)
+
+# Example polygon (extent of interest)
+poly <- sf::st_as_sf(as.polygons(ext(100000, 105000, 0, 5000), crs = "EPSG:32748"))
+
+# Create 1 km grid covering polygon
+grids <- makeGrids(poly, cellSize = 1000, clip = TRUE)
+
+plot(grids["Grid_id"])
+}
+
 }
