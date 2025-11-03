@@ -31,7 +31,7 @@
 #' p_buff <- st_buffer(p, 100)
 #'
 #' # Compute distance map
-#' dist_map <- dist2area_full(p_buff, res = 10)
+#' dist_map <- dist2area(p_buff, res = 10)
 #'
 #' plot(dist_map)
 #' }

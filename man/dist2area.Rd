@@ -42,7 +42,7 @@ p <- st_as_sf(as.polygons(ext(0, 1000, 0, 1000)))
 p_buff <- st_buffer(p, 100)
 
 # Compute distance map
-dist_map <- dist2area_full(p_buff, res = 10)
+dist_map <- dist2area(p_buff, res = 10)
 
 plot(dist_map)
 }
