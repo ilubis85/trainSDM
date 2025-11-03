@@ -1,94 +1,57 @@
-#' @title Compute Signed Distance to a Polygon Area (Positive Inside, Negative Outside)
+#' Calculate signed Euclidean distance from polygon boundary and interior
 #'
-#' @description
-#' This function calculates a continuous raster of signed distances relative to
-#' a polygon area (e.g., a forest patch). Distances are **positive inside** the polygon
-#' and **negative outside**, with 0 representing the boundary. Internally, it creates
-#' a polyline from the polygon boundary, computes distance inside and outside, and
-#' merges them into a single raster.
+#' This function computes a raster of signed distances relative to a polygon area,
+#' where positive values represent distance *outside* the polygon, and negative values
+#' represent distance *inside* the polygon. The result can be useful for modeling
+#' habitat-edge effects or environmental gradients.
 #'
-#' @param poly An `sf` or `SpatVector` polygon object representing the area of interest (e.g., forest).
-#' @param res Numeric. Spatial resolution (in map units) for the output raster. Default = 30.
-#' @param buffer Optional numeric. Buffer distance (in map units) to extend the raster extent beyond
-#'        the polygon for distance computation. Default = 1000.
-#' @param crs Optional coordinate reference system (EPSG code or PROJ string).
-#'        If `NULL`, uses CRS of `poly`.
+#' @param polyData An sf or SpatVector object representing the target polygon(s)
+#' @param rasterTemp A template SpatRaster to define resolution and extent
+#' @param as_Raster Logical; if TRUE, returns SpatRaster output (default = TRUE)
+#' @param rasRes Numeric; desired raster resolution (default = 1000 meters)
 #'
-#' @return A `SpatRaster` where values:
-#' \itemize{
-#'   \item are **positive** inside the polygon (increasing toward the center),
-#'   \item are **negative** outside the polygon (decreasing away from the border),
-#'   \item are **0** along the polygon boundary.
-#' }
+#' @return A SpatRaster object of signed Euclidean distances
 #'
-#' @examples
-#' \dontrun{
-#' library(terra)
-#' library(sf)
-#'
-#' # Example polygon (e.g., forest patch)
-#' p <- st_as_sf(as.polygons(ext(0, 1000, 0, 1000)))
-#' p_buff <- st_buffer(p, 100)
-#'
-#' # Compute distance map
-#' dist_map <- dist2area(p_buff, res = 10)
-#'
-#' plot(dist_map)
-#' }
-#'
-#' @export
-dist2area <- function(poly, res = 30, buffer = 1000, crs = NULL) {
-  #--- Validation checks ---
-  if (missing(poly)) stop("Argument 'poly' is required.")
-  if (!inherits(poly, c("sf", "SpatVector", "Spatial"))) {
-    stop("'poly' must be an sf, SpatVector, or Spatial* object.")
+dist2area <- function(polyData, rasterTemp, as_Raster = TRUE, rasRes = 1000) {
+
+    # Ensure inputs are compatible
+  if (inherits(polyData, "sf")) {
+    polyData <- terra::vect(polyData)
   }
 
-  # Convert to SpatVector
-  poly_v <- terra::vect(poly)
+  # Reproject if CRS does not match
+  if (!identical(crs(polyData), crs(rasterTemp))) {
+    polyData <- project(polyData, crs(rasterTemp))
+  }
 
-  # Set CRS if provided
-  if (!is.null(crs)) terra::crs(poly_v) <- crs
+  # Convert polygon to polyline (boundary)
+  poly_line <- terra::as.lines(polyData)
 
-  # Create boundary (polyline)
-  poly_line <- terra::as.lines(poly_v)
+  # Align raster resolution
+  res(rasterTemp) <- rasRes
 
-  # Create raster extent slightly larger than polygon
-  ext_exp <- terra::ext(poly_v)
-  ext_exp <- terra::extend(ext_exp, buffer)
+  # Rasterize boundary and area
+  poly_line_rast <- terra::rasterize(poly_line, rasterTemp, field = 1, background = NA)
+  poly_gone_rast <- terra::rasterize(polyData, rasterTemp, field = 1, background = NA)
 
-  # Create template raster
-  r_template <- terra::rast(ext = ext_exp, res = res, crs = terra::crs(poly_v))
+  # Compute distance from boundaries and interior
+  dist_out <- terra::distance(poly_line_rast)
+  dist_in  <- terra::distance(poly_gone_rast)
 
-  # Rasterize polygon
-  r_poly <- terra::rasterize(poly_v, r_template, field = 1)
+  # Invert distance inside polygon to get negative values
+  dist_in[dist_in == 0] <- NA
+  dist_in_neg <- dist_in * -1
 
-  #--- 1. Distance INSIDE polygon ---
-  inDist <- terra::distance(r_poly)
-  # Mask only inside polygon
-  inDist <- terra::mask(inDist, r_poly)
+  # Resample to same grid if needed
+  dist_out_res <- terra::resample(dist_out, dist_in_neg, method = "bilinear")
 
-  #--- 2. Distance OUTSIDE polygon ---
-  # Invert polygon mask (set outside = 1)
-  r_out <- r_poly
-  r_out[is.na(r_out)] <- 1
-  r_out[r_out == 1] <- NA
-  r_out <- terra::ifel(is.na(r_poly), 1, NA)
+  # Merge: interior (negative) and exterior (positive)
+  dist_signed <- terra::cover(dist_in_neg, dist_out_res)
 
-  outDist <- terra::distance(r_out)
-  outDist <- terra::mask(outDist, r_out)
-
-  #--- 3. Combine both rasters ---
-  outDist[outDist == 0] <- NA
-  outDist_neg <- outDist * -1
-
-  # Align rasters and merge
-  inDist_res <- terra::resample(inDist, outDist_neg, method = "bilinear")
-  dist_combined <- terra::cover(outDist_neg, inDist_res)
-
-  # Replace zero at boundaries
-  dist_combined[is.na(dist_combined) & !is.na(r_poly)] <- 0
-
-  # Return final signed distance raster
-  return(dist_combined)
+  # Return result
+  if (as_Raster) {
+    return(dist_signed)
+  } else {
+    return(terra::as.data.frame(dist_signed, xy = TRUE))
+  }
 }

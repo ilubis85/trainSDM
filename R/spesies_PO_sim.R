@@ -18,10 +18,10 @@ spesies_PO_sim <- function(track, dem, canopy_height, river_dist, n_points = 500
                                               n = c(25, 50, 47, 60))) {
 
   # --- 1. Buat titik acak di sepanjang lintasan ---
-  points_geom <- st_line_sample(track, n = n_points, type = "random") %>%
-    st_cast("POINT") %>%
-    st_sf() %>%
-    st_sf(geometry = .)
+  points_geom <- sf::st_line_sample(track, n = n_points, type = "random") %>%
+    sf::st_cast("POINT") %>%
+    sf::st_sf() %>%
+    sf::st_sf(geometry = .)
 
   # --- 2. Ekstrak nilai raster di titik-titik tersebut ---
   pts_vect <- terra::vect(points_geom)
@@ -39,35 +39,35 @@ spesies_PO_sim <- function(track, dem, canopy_height, river_dist, n_points = 500
   for (i in seq_len(nrow(rules))) {
     r <- rules[i, ]
     df <- points_geom %>%
-      filter(elev_m < r$elev_max,
+      dplyr::filter(elev_m < r$elev_max,
              canopy_m > r$canopy_min,
              dist_river < r$river_maxdist)
 
     if (nrow(df) >= r$n) {
       df <- df %>%
-        slice_sample(n = r$n) %>%
-        mutate(species = r$species)
+        dplyr::slice_sample(n = r$n) %>%
+        dplyr::mutate(species = r$species)
     } else {
       warning(paste("Spesies", r$species, "hanya", nrow(df),
                     "titik sesuai aturan dari target", r$n))
-      df <- df %>% mutate(species = r$species)
+      df <- df %>% dplyr::mutate(species = r$species)
     }
     species_list[[i]] <- df
   }
 
   # --- 4. Gabungkan hasil ---
-  points_filtered <- bind_rows(species_list)
+  points_filtered <- dplyr::bind_rows(species_list)
 
   # --- 5. Tambahkan atribut tambahan acak ---
   points_filtered <- points_filtered %>%
-    mutate(
-      tanggal = sample(seq.Date(as.Date("2024-01-01"),
+    dplyr::mutate(
+      tanggal = base::sample(seq.Date(as.Date("2024-01-01"),
                                 as.Date("2024-03-31"), by = "day"),
                        nrow(points_filtered), replace = TRUE),
-      tim = sample(c("Tim A", "Tim B", "Tim C"), nrow(points_filtered), replace = TRUE),
-      bukti = sample(c("Individu langsung", "Jejak", "Kotoran", "Suara"),
+      tim = base::sample(c("Tim A", "Tim B", "Tim C"), nrow(points_filtered), replace = TRUE),
+      bukti = base::sample(c("Individu langsung", "Jejak", "Kotoran", "Suara"),
                      nrow(points_filtered), replace = TRUE),
-      jumlah = sample(1:5, nrow(points_filtered), replace = TRUE)
+      jumlah = base::sample(1:5, nrow(points_filtered), replace = TRUE)
     )
 
   return(points_filtered)

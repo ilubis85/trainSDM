@@ -2,49 +2,25 @@
 % Please edit documentation in R/dist2area.R
 \name{dist2area}
 \alias{dist2area}
-\title{Compute Signed Distance to a Polygon Area (Positive Inside, Negative Outside)}
+\title{Calculate signed Euclidean distance from polygon boundary and interior}
 \usage{
-dist2area(poly, res = 30, buffer = 1000, crs = NULL)
+dist2area(polyData, rasterTemp, as_Raster = TRUE, rasRes = 1000)
 }
 \arguments{
-\item{poly}{An \code{sf} or \code{SpatVector} polygon object representing the area of interest (e.g., forest).}
+\item{polyData}{An sf or SpatVector object representing the target polygon(s)}
 
-\item{res}{Numeric. Spatial resolution (in map units) for the output raster. Default = 30.}
+\item{rasterTemp}{A template SpatRaster to define resolution and extent}
 
-\item{buffer}{Optional numeric. Buffer distance (in map units) to extend the raster extent beyond
-the polygon for distance computation. Default = 1000.}
+\item{as_Raster}{Logical; if TRUE, returns SpatRaster output (default = TRUE)}
 
-\item{crs}{Optional coordinate reference system (EPSG code or PROJ string).
-If \code{NULL}, uses CRS of \code{poly}.}
+\item{rasRes}{Numeric; desired raster resolution (default = 1000 meters)}
 }
 \value{
-A \code{SpatRaster} where values:
-\itemize{
-\item are \strong{positive} inside the polygon (increasing toward the center),
-\item are \strong{negative} outside the polygon (decreasing away from the border),
-\item are \strong{0} along the polygon boundary.
-}
+A SpatRaster object of signed Euclidean distances
 }
 \description{
-This function calculates a continuous raster of signed distances relative to
-a polygon area (e.g., a forest patch). Distances are \strong{positive inside} the polygon
-and \strong{negative outside}, with 0 representing the boundary. Internally, it creates
-a polyline from the polygon boundary, computes distance inside and outside, and
-merges them into a single raster.
-}
-\examples{
-\dontrun{
-library(terra)
-library(sf)
-
-# Example polygon (e.g., forest patch)
-p <- st_as_sf(as.polygons(ext(0, 1000, 0, 1000)))
-p_buff <- st_buffer(p, 100)
-
-# Compute distance map
-dist_map <- dist2area(p_buff, res = 10)
-
-plot(dist_map)
-}
-
+This function computes a raster of signed distances relative to a polygon area,
+where positive values represent distance \emph{outside} the polygon, and negative values
+represent distance \emph{inside} the polygon. The result can be useful for modeling
+habitat-edge effects or environmental gradients.
 }
