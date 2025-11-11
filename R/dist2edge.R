@@ -11,10 +11,11 @@
 #' @param rasRes Numeric; desired raster resolution (default = 1000 meters)
 #'
 #' @return A SpatRaster object of signed Euclidean distances
+#' @export
 #'
-dist2area <- function(polyData, rasterTemp, as_Raster = TRUE, rasRes = 1000) {
+dist2edge <- function(polyData, rasterTemp, as_Raster = TRUE, rasRes = 1000) {
 
-    # Ensure inputs are compatible
+  # Ensure inputs are compatible
   if (inherits(polyData, "sf")) {
     polyData <- terra::vect(polyData)
   }
