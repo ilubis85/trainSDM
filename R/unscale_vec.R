@@ -4,6 +4,7 @@
 #' @param original Vektor referensi untuk menghitung mean dan sd.
 #'
 #' @return Vektor nilai asli (unscaled).
+#' @export
 unscale_vec <- function(scaled, original){
   scaled * sd(original, na.rm = TRUE) + mean(original, na.rm = TRUE)
 }
