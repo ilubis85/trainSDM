@@ -3,7 +3,7 @@
 #' @param cam_points sf POINT data. Titik lokasi kamera trap.
 #' @param dem SpatRaster elevasi (meter dpl)
 #' @param canopy SpatRaster tinggi kanopi (meter)
-#' @param river_dist SpatRaster jarak ke sungai (meter)
+#' @param forest_dist SpatRaster jarak ke tepi hutan (meter)
 #' @param n_days integer, jumlah hari pengamatan (default = 30)
 #' @param rules data.frame berisi aturan spesies
 #'        (kolom wajib: species, elev_max, canopy_min, river_maxdist,
@@ -13,53 +13,54 @@
 #'         Genus_Species, Date_Time, Count)
 #' @export
 #'
-sim_ct_data <- function(cam_points, dem, canopy, river_dist,
-                                   n_days = 30,
-                                   rules = data.frame(
-                                     species = c("Harimau", "Gajah", "Rusa", "Babi hutan"),
-                                     elev_max = c(2000, 800, 1500, 1000),
-                                     canopy_min = c(20, 10, 15, 5),
-                                     river_maxdist = c(2000, 1000, 1500, 800),
-                                     prob_camera = c(0.6, 0.8, 0.7, 0.9),
-                                     prob_daily = c(0.3, 0.4, 0.5, 0.6)
-                                   )) {
+sim_ct_data <- function(cam_points, dem, canopy, forest_dist,
+                        n_days = 30,
+                        rules = data.frame(
+                          species = c("Harimau", "Gajah", "Rusa", "Babi hutan"),
+                          elev_max = c(2000, 800, 1500, 1000),
+                          canopy_min = c(20, 10, 15, 5),
+                          forest_mindist = c(200, 50, 100, 30),   # Semakin jauh dari tepi, semakin baik
+                          prob_camera = c(0.6, 0.8, 0.7, 0.9),
+                          prob_daily = c(0.3, 0.4, 0.5, 0.6)
+                        )) {
 
   # --- 1. Ekstrak nilai lingkungan untuk tiap titik kamera ---
   cam_vect <- terra::vect(cam_points)
-  elev_vals   <- terra::extract(dem, cam_vect)[, 2]
-  canopy_vals <- terra::extract(canopy, cam_vect)[, 2]
-  river_vals  <- terra::extract(river_dist, cam_vect)[, 2]
 
-  cam_points$elev_m     <- elev_vals
-  cam_points$canopy_m   <- canopy_vals
-  cam_points$dist_river <- river_vals
-  cam_points$Grid       <- seq_len(nrow(cam_points))
+  elev_vals     <- terra::extract(dem, cam_vect)[, 2]
+  canopy_vals   <- terra::extract(canopy, cam_vect)[, 2]
+  forest_vals   <- terra::extract(forest_dist, cam_vect)[, 2]
 
-  # --- 2. Loop setiap titik kamera dan generate event harian ---
+  cam_points$elev_m      <- elev_vals
+  cam_points$canopy_m    <- canopy_vals
+  cam_points$dist_forest <- forest_vals
+  cam_points$Grid        <- seq_len(nrow(cam_points))
+
+  # --- 2. Loop kamera dan simulasi harian ---
   all_events <- lapply(seq_len(nrow(cam_points)), function(i) {
+
     cam <- cam_points[i, ]
     elev <- cam$elev_m
     canopy <- cam$canopy_m
-    dist_river <- cam$dist_river
+    dist_forest <- cam$dist_forest
     grid <- cam$Grid
 
-    # Spesies hadir di kamera ini?
+    # --- RULES HADIR/TIDAK ---
     present_species <- rules$species[
       sapply(seq_len(nrow(rules)), function(j) {
         r <- rules[j, ]
         runif(1) < r$prob_camera &
           elev < r$elev_max &
           canopy > r$canopy_min &
-          dist_river < r$river_maxdist
+          dist_forest > r$forest_mindist     # Semakin jauh masuk hutan → semakin mungkin hadir
       })
     ]
 
-    # Periode pengamatan harian
     dates <- seq.Date(Sys.Date() - n_days, Sys.Date(), by = "day")
 
-    # --- 3. Simulasi event harian ---
+    # --- 3. Simulasi Event Harian ---
     events <- lapply(dates, function(d) {
-      # Event awal (Start)
+
       base <- data.frame(
         Grid = grid,
         Image_Id = paste0(format(d, "%Y-%m-%d"), "_CAM", grid, ".jpg"),
@@ -70,9 +71,10 @@ sim_ct_data <- function(cam_points, dem, canopy, river_dist,
         Count = NA
       )
 
-      # Deteksi spesies (Animal)
+      # Deteksi spesies
       detections <- lapply(present_species, function(sp) {
         r <- rules[rules$species == sp, ]
+
         if (runif(1) < r$prob_daily) {
           data.frame(
             Grid = grid,
@@ -89,7 +91,7 @@ sim_ct_data <- function(cam_points, dem, canopy, river_dist,
         }
       }) %>% dplyr::bind_rows()
 
-      # Foto kosong (Blank)
+      # Foto kosong
       blanks <- NULL
       if (runif(1) < 0.3) {
         blanks <- data.frame(

@@ -8,12 +8,11 @@ sim_ct_data(
   cam_points,
   dem,
   canopy,
-  river_dist,
+  forest_dist,
   n_days = 30,
   rules = data.frame(species = c("Harimau", "Gajah", "Rusa", "Babi hutan"), elev_max =
-    c(2000, 800, 1500, 1000), canopy_min = c(20, 10, 15, 5), river_maxdist = c(2000,
-    1000, 1500, 800), prob_camera = c(0.6, 0.8, 0.7, 0.9), prob_daily = c(0.3, 0.4, 0.5,
-    0.6))
+    c(2000, 800, 1500, 1000), canopy_min = c(20, 10, 15, 5), forest_mindist = c(200, 50,
+    100, 30), prob_camera = c(0.6, 0.8, 0.7, 0.9), prob_daily = c(0.3, 0.4, 0.5, 0.6))
 )
 }
 \arguments{
@@ -23,7 +22,7 @@ sim_ct_data(
 
 \item{canopy}{SpatRaster tinggi kanopi (meter)}
 
-\item{river_dist}{SpatRaster jarak ke sungai (meter)}
+\item{forest_dist}{SpatRaster jarak ke tepi hutan (meter)}
 
 \item{n_days}{integer, jumlah hari pengamatan (default = 30)}
 
