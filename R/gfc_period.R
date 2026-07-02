@@ -85,16 +85,7 @@ gfc_period <- function(gfc, aoi = NULL,
       terra::ifel(deforestation == 1, 2, 1)
     )
 
-  result <- terra::as.factor(result)
-
-  levels(result) <- data.frame(
-    ID = c(0, 1, 2),
-    class = c(
-      "Non forest",
-      "Forest",
-      "Deforestation"
-    )
-  )
+  names(result) <- paste0("defor_", forest_year, "_", target_year)
 
   if (!is.null(aoi) && mask_aoi) {
 
