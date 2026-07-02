@@ -18,6 +18,7 @@ Imports:
     progress(>= 1.2.3),
     purrr(>= 1.1.0),
     graphics(>= 4.5.1),
+    cli(>= 3.6.5),
     sf(>= 1.0-21)
 Depends: 
     R (>= 4.3.0)
